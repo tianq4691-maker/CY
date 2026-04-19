@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>陈毅社会网络分析</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/d3-force@3"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f8f9fa;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #E84C3D 0%, #c0392b 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .back-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .header-content {
+            flex: 1;
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.3rem;
+        }
+        
+        .header .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .container {
+            display: flex;
+            min-height: calc(100vh - 80px);
+        }
+        
+        .sidebar {
+            width: 280px;
+            background: white;
+            padding: 1.5rem;
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .controls {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .phase-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .phase-btn {
+            padding: 0.6rem 1.2rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 50px;
+            background: white;
+            color: #666;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+        }
+        
+        .phase-btn:hover {
+            border-color: #E84C3D;
+            color: #E84C3D;
+        }
+        
+        .phase-btn.active {
+            background: #E84C3D;
+            border-color: #E84C3D;
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            border-left: 4px solid #E84C3D;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #E84C3D;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+        
+        .network-container {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        
+        #network {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .legend {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #eee;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .legend-text {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #E84C3D;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .node-info {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: none;
+        }
+        
+        .node-info.show {
+            display: block;
+        }
+        
+        .info-title {
+            color: #E84C3D;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .info-content {
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                padding: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="back-btn">←</a>
+        <div class="header-content">
+            <h1>陈毅社会网络分析</h1>
+            <p class="subtitle">分析陈毅元帅在不同历史阶段的社会关系网络</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <div class="controls">
+                <h3 style="margin-bottom: 1rem; color: #E84C3D;">选择分析阶段</h3>
+                <div class="phase-selector">
+                    <button class="phase-btn active" data-phase="0">全部阶段</button>
+                    <button class="phase-btn" data-phase="1">早年求学</button>
+                    <button class="phase-btn" data-phase="2">武装革命</button>
+                    <button class="phase-btn" data-phase="3">新四军抗战</button>
+                    <button class="phase-btn" data-phase="4">解放战争</button>
+                    <button class="phase-btn" data-phase="5">外交建设</button>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="node-count">0</div>
+                        <div class="stat-label">节点数量</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="edge-count">0</div>
+                        <div class="stat-label">边数量</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="density">0.00</div>
+                        <div class="stat-label">网络密度</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="legend">
+                <h3 style="margin-bottom: 1rem; color: #E84C3D;">图例说明</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #E84C3D;"></div>
+                    <div class="legend-text">陈毅节点</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4A90D9;"></div>
+                    <div class="legend-text">重要历史人物</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #27AE60;"></div>
+                    <div class="legend-text">组织机构</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #8E44AD;"></div>
+                    <div class="legend-text">地点/事件</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #F39C12;"></div>
+                    <div class="legend-text">其他关联节点</div>
+                </div>
+            </div>
+            
+            <div class="node-info" id="node-info">
+                <div class="info-title">节点信息</div>
+                <div class="info-content" id="node-details">
+                    点击网络中的节点查看详细信息
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="network-container">
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>正在加载网络数据...</p>
+                </div>
+                <svg id="network"></svg>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 网络数据 - 基于CSV文件生成
+        const networkData = {
+            phase0: {
+                nodes: [
+                    { id: "陈毅", type: "central", size: 25 },
+                    { id: "周恩来", type: "person", size: 18 },
+                    { id: "毛泽东", type: "person", size: 20 },
+                    { id: "朱德", type: "person", size: 18 },
+                    { id: "邓小平", type: "person", size: 16 },
+                    { id: "新四军", type: "org", size: 16 },
+                    { id: "华东野战军", type: "org", size: 16 },
+                    { id: "上海", type: "location", size: 14 },
+                    { id: "中共", type: "org", size: 22 },
+                ],
+                links: [
+                    { source: "陈毅", target: "周恩来", strength: 0.8 },
+                    { source: "陈毅", target: "毛泽东", strength: 0.7 },
+                    { source: "陈毅", target: "朱德", strength: 0.9 },
+                    { source: "陈毅", target: "邓小平", strength: 0.7 },
+                    { source: "陈毅", target: "新四军", strength: 1.0 },
+                    { source: "陈毅", target: "华东野战军", strength: 0.9 },
+                    { source: "陈毅", target: "上海", strength: 0.6 },
+                    { source: "陈毅", target: "中共", strength: 0.9 },
+                    { source: "周恩来", target: "毛泽东", strength: 0.8 },
+                ]
+            },
+            phase1: {
+                nodes: [
+                    { id: "陈毅", type: "central", size: 25 },
+                    { id: "周恩来", type: "person", size: 18 },
+                ],
+                links: [
+                    { source: "周恩来", target: "陈毅", strength: 0.8 },
+                ]
+            },
+            phase2: {
+                nodes: [
+                    { id: "陈毅", type: "central", size: 25 },
+                    { id: "列宁", type: "person", size: 18 },
+                    { id: "毛泽东", type: "person", size: 18 },
+                    { id: "朱德", type: "person", size: 16 },
+                    { id: "中国工农红军第四军/红四军", type: "org", size: 14 },
+                    { id: "中央政治局", type: "org", size: 14 },
+                    { id: "萧菊英", type: "person", size: 12 },
+                    { id: "赖月明", type: "person", size: 12 },
+                    { id: "项英", type: "person", size: 12 },
+                    { id: "鲁炯雯", type: "person", size: 12 },
+                ],
+                links: [
+                    { source: "陈毅", target: "列宁", strength: 0.6 },
+                    { source: "陈毅", target: "毛泽东", strength: 0.7 },
+                    { source: "陈毅", target: "朱德", strength: 0.8 },
+                ]
+            },
+            phase3: {
+                nodes: [
+                    { id: "陈毅", type: "central", size: 25 },
+                    { id: "周恩来", type: "person", size: 18 },
+                    { id: "张茜", type: "person", size: 16 },
+                    { id: "叶挺", type: "person", size: 16 },
+                    { id: "粟裕", type: "person", size: 16 },
+                    { id: "韩德勤", type: "person", size: 14 },
+                    { id: "华中新四军八路军总指挥部", type: "org", size: 14 },
+                    { id: "刘少奇", type: "person", size: 14 },
+                    { id: "蒋介石", type: "person", size: 14 },
+                ],
+                links: [
+                    { source: "陈毅", target: "粟裕", strength: 0.8 },
+                    { source: "陈毅", target: "刘少奇", strength: 0.8 },
+                    { source: "陈毅", target: "韩德勤", strength: 0.6 },
+                    { source: "陈毅", target: "张茜", strength: 0.4 },
+                    { source: "陈毅", target: "华中新四军八路军总指挥部", strength: 0.4 },
+                    { source: "陈毅", target: "毛泽东", strength: 0.4 },
+                    { source: "周恩来", target: "陈毅", strength: 0.2 },
+                    { source: "陈毅", target: "叶挺", strength: 0.2 },
+                ]
+            },
+            phase4: {
+                nodes: [
+                    { id: "陈毅", type: "central", size: 25 },
+                    { id: "华东野战军", type: "org", size: 18 },
+                    { id: "粟裕", type: "person", size: 18 },
+                    { id: "中共中央", type: "org", size: 16 },
+                    { id: "毛泽东", type: "person", size: 16 },
+                    { id: "中共中央中原局", type: "org", size: 14 },
+                    { id: "邓小平", type: "person", size: 14 },
+                    { id: "刘伯承", type: "person", size: 14 },
+                    { id: "第三野战军", type: "org", size: 14 },
+                ],
+                links: [
+                    { source: "陈毅", target: "粟裕", strength: 1.0 },
+                    { source: "邓小平", target: "陈毅", strength: 0.7 },
+                    { source: "毛泽东", target: "陈毅", strength: 0.3 },
+                    { source: "陈毅", target: "刘伯承", strength: 0.3 },
+                    { source: "陈毅", target: "毛泽东", strength: 0.2 },
+                    { source: "陈毅", target: "邓小平", strength: 0.2 },
+                ]
+            },
+            phase5: {
+                nodes: [
+                    { id: "陈毅", type: "central", size: 25 },
+                    { id: "上海市人民政府", type: "org", size: 18 },
+                    { id: "上海总工会筹备委员会", type: "org", size: 16 },
+                    { id: "上海工人协会", type: "org", size: 16 },
+                    { id: "上海职工协会", type: "org", size: 16 },
+                    { id: "第三野战军第二十五军", type: "org", size: 14 },
+                    { id: "粟裕", type: "person", size: 14 },
+                    { id: "中共中央华东局暨上海市委", type: "org", size: 14 },
+                    { id: "饶漱石", type: "person", size: 14 },
+                ],
+                links: [
+                    { source: "周恩来", target: "陈毅", strength: 0.9 },
+                    { source: "毛泽东", target: "陈毅", strength: 0.3 },
+                    { source: "陈毅", target: "周恩来", strength: 0.3 },
+                    { source: "陈毅", target: "刘少奇", strength: 0.1 },
+                    { source: "刘少奇", target: "陈毅", strength: 0.1 },
+                    { source: "陈毅", target: "毛泽东", strength: 0.1 },
+                ]
+            }
+        };
+        
+        const typeColors = {
+            central: "#E84C3D",
+            person: "#4A90D9",
+            org: "#27AE60",
+            location: "#8E44AD",
+            event: "#8E44AD",
+            other: "#F39C12"
+        };
+        
+        let currentPhase = 'phase0';
+        let simulation;
+        
+        function initNetwork() {
+            const width = document.getElementById('network').parentElement.clientWidth;
+            const height = document.getElementById('network').parentElement.clientHeight;
+            
+            const svg = d3.select('#network')
+                .attr('width', width)
+                .attr('height', height);
+            
+            svg.selectAll('*').remove();
+            
+            const g = svg.append('g');
+            
+            const data = networkData[currentPhase];
+            if (!data) return;
+            
+            // 创建力导向图
+            simulation = d3.forceSimulation(data.nodes)
+                .force('link', d3.forceLink(data.links).id(d => d.id).distance(100))
+                .force('charge', d3.forceManyBody().strength(-200))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(d => d.size + 10));
+            
+            // 绘制连线
+            const links = g.append('g')
+                .selectAll('line')
+                .data(data.links)
+                .enter()
+                .append('line')
+                .attr('stroke', '#999')
+                .attr('stroke-opacity', 0.6)
+                .attr('stroke-width', d => d.strength * 3);
+            
+            // 绘制节点
+            const nodes = g.append('g')
+                .selectAll('circle')
+                .data(data.nodes)
+                .enter()
+                .append('circle')
+                .attr('r', d => d.size)
+                .attr('fill', d => typeColors[d.type] || typeColors.other)
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2)
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+            
+            // 添加节点标签
+            const labels = g.append('g')
+                .selectAll('text')
+                .data(data.nodes)
+                .enter()
+                .append('text')
+                .text(d => d.id)
+                .attr('font-size', d => Math.max(10, d.size - 5))
+                .attr('dx', 12)
+                .attr('dy', 4)
+                .attr('fill', '#333')
+                .style('pointer-events', 'none');
+            
+            // 节点点击事件
+            nodes.on('click', function(event, d) {
+                showNodeInfo(d);
+            });
+            
+            // 更新力导向图
+            simulation.on('tick', () => {
+                links
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+                
+                nodes
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+                
+                labels
+                    .attr('x', d => d.x)
+                    .attr('y', d => d.y);
+            });
+            
+            // 更新统计数据
+            updateStats(data);
+            
+            // 隐藏加载动画
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+        
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+        
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
+        
+        function updateStats(data) {
+            const nodeCount = data.nodes.length;
+            const edgeCount = data.links.length;
+            const density = edgeCount / (nodeCount * (nodeCount - 1) / 2);
+            
+            document.getElementById('node-count').textContent = nodeCount;
+            document.getElementById('edge-count').textContent = edgeCount;
+            document.getElementById('density').textContent = density.toFixed(3);
+        }
+        
+        function showNodeInfo(node) {
+            const info = document.getElementById('node-info');
+            const details = document.getElementById('node-details');
+            
+            let infoText = `<strong>${node.id}</strong><br>`;
+            infoText += `<br>节点类型: ${getTypeName(node.type)}<br>`;
+            infoText += `节点大小: ${node.size}<br><br>`;
+            
+            // 计算关联关系数量 - 修正：直接使用字符串比较
+            const phaseData = networkData[currentPhase];
+            if (phaseData && phaseData.links) {
+                const relatedCount = phaseData.links.filter(l => 
+                    l.source === node.id || l.target === node.id
+                ).length;
+                infoText += `关联关系数量: ${relatedCount}`;
+            } else {
+                infoText += `关联关系数量: 0`;
+            }
+            
+            details.innerHTML = infoText;
+            info.classList.add('show');
+        }
+        
+        function getTypeName(type) {
+            const names = {
+                central: '中心人物（陈毅）',
+                person: '历史人物',
+                org: '组织机构',
+                location: '地点',
+                event: '事件',
+                other: '其他'
+            };
+            return names[type] || type;
+        }
+        
+        // 初始化
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                initNetwork();
+                
+                // 阶段选择按钮事件
+                document.querySelectorAll('.phase-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        
+                        const phase = this.dataset.phase;
+                        currentPhase = phase === '0' ? 'phase0' : `phase${phase}`;
+                        
+                        // 显示加载动画
+                        document.getElementById('loading').style.display = 'block';
+                        document.getElementById('node-info').classList.remove('show');
+                        
+                        setTimeout(() => {
+                            initNetwork();
+                        }, 300);
+                    });
+                });
+                
+                // 窗口大小改变时重新绘制
+                window.addEventListener('resize', () => {
+                    initNetwork();
+                });
+            }, 1000); // 模拟数据加载延迟
+        });
+    </script>
+</body>
+</html>

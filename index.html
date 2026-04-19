@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>陈毅数字人文项目整合</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            color: #1a237e;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #5d6d97;
+            max-width: 800px;
+            margin: 0 auto 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .project-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        .card-image {
+            height: 220px;
+            background-size: cover;
+            background-position: center;
+        }
+        
+        #map-card .card-image {
+            background: linear-gradient(135deg, #4A90D9 0%, #1a237e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #network-card .card-image {
+            background: linear-gradient(135deg, #E84C3D 0%, #c0392b 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #analysis-card .card-image {
+            background: linear-gradient(135deg, #27AE60 0%, #16a085 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #kg-card .card-image {
+            background: linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
+        }
+        
+        .card-content {
+            padding: 1.8rem;
+        }
+        
+        .card-title {
+            font-size: 1.6rem;
+            margin-bottom: 0.8rem;
+            color: #1a237e;
+        }
+        
+        .card-desc {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 1.2rem;
+            font-size: 1rem;
+        }
+        
+        .features {
+            list-style: none;
+        }
+        
+        .features li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .features li:last-child {
+            border-bottom: none;
+        }
+        
+        .features li:before {
+            content: "✓";
+            color: #4CAF50;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .enter-btn {
+            display: inline-block;
+            background: #1a237e;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .enter-btn:hover {
+            background: #283593;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 4rem;
+            padding: 2rem 0;
+            color: #7f8c8d;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        @media (max-width: 768px) {
+            .project-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>陈毅数字人文项目</h1>
+            <p class="subtitle">本整合项目通过多维度可视化分析，全面展示陈毅元帅的历史轨迹、社会网络关系及事件数据统计，为历史研究提供数字化支持。</p>
+        </header>
+        
+        <main>
+            <div class="project-grid">
+                <a href="http://localhost:8080/map.html" class="project-card" id="map-card" target="_blank">
+                    <div class="card-image">
+                        <div class="icon">📍</div>
+                    </div>
+                    <div class="card-content">
+                        <h2 class="card-title">历史行迹图</h2>
+                        <p class="card-desc">交互式地图展示陈毅元帅1901-1972年间的重要历史轨迹，包含五个阶段的可视化时间轴、地理标记和事件详情。</p>
+                        <ul class="features">
+                            <li>交互式时间轴控制</li>
+                            <li>五个历史阶段颜色编码</li>
+                            <li>详细事件弹窗信息</li>
+                            <li>地理位置标记与连线</li>
+                        </ul>
+                        <div style="margin-top: 1.5rem;">
+                            <span class="enter-btn">进入地图</span>
+                        </div>
+                    </div>
+                </a>
+                
+                <a href="http://localhost:8080/network.html" class="project-card" id="network-card" target="_blank">
+                    <div class="card-image">
+                        <div class="icon">🕸️</div>
+                    </div>
+                    <div class="card-content">
+                        <h2 class="card-title">社会网络分析</h2>
+                        <p class="card-desc">分析陈毅元帅在不同历史阶段的社会关系网络，展示人物联系、重要节点和网络结构特征。</p>
+                        <ul class="features">
+                            <li>五个阶段的关系网络图</li>
+                            <li>节点中心性分析</li>
+                            <li>社区发现与聚类</li>
+                            <li>网络指标统计</li>
+                        </ul>
+                        <div style="margin-top: 1.5rem;">
+                            <span class="enter-btn">进入网络分析</span>
+                        </div>
+                    </div>
+                </a>
+                
+                <a href="http://localhost:8080/analysis.html" class="project-card" id="analysis-card" target="_blank">
+                    <div class="card-image">
+                        <div class="icon">📊</div>
+                    </div>
+                    <div class="card-content">
+                        <h2 class="card-title">基本数据分析</h2>
+                        <p class="card-desc">展示陈毅生平事件的数据统计分析，包括事件类型分布、时间线分布、阶段占比等可视化图表。</p>
+                        <ul class="features">
+                            <li>事件类型分布图表</li>
+                            <li>时间线分布可视化</li>
+                            <li>各阶段事件占比分析</li>
+                            <li>综合分析仪表板</li>
+                        </ul>
+                        <div style="margin-top: 1.5rem;">
+                            <span class="enter-btn">进入数据分析</span>
+                        </div>
+                    </div>
+                </a>
+
+                <a href="http://localhost:8080/knowledge-graph.html" class="project-card" id="kg-card" target="_blank">
+                    <div class="card-image" style="background: linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%);">
+                        <div class="icon">🧠</div>
+                    </div>
+                    <div class="card-content">
+                        <h2 class="card-title">知识图谱</h2>
+                        <p class="card-desc">基于Neo4j知识图谱的三维度可视化：完整知识图谱、人物事件关系、地点事件关联。</p>
+                        <ul class="features">
+                            <li>完整知识图谱可视化</li>
+                            <li>人物-事件关系网络</li>
+                            <li>地点-事件关联分析</li>
+                            <li>交互式图谱探索</li>
+                        </ul>
+                        <div style="margin-top: 1.5rem;">
+                            <span class="enter-btn">进入知识图谱</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </main>
+        
+        <footer>
+            <p>© 2026 陈毅数字人文项目 | 数字人文导论课程作业</p>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem;">数据来源：陈毅生平事件数据集 | 可视化工具：Leaflet, 数据分析工具：Python</p>
+        </footer>
+    </div>
+</body>
+</html>

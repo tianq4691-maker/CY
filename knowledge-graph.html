@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>陈毅知识图谱 - 三个维度的可视化</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #8E44AD 0%, #6C3483 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 600;
+        }
+        
+        .back-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 24px;
+            font-weight: bold;
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            text-align: center;
+            line-height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-top: 0.3rem;
+        }
+        
+        .tab-container {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 1rem 2rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+            border-right: 1px solid #e0e0e0;
+        }
+        
+        .tab:hover {
+            background: #eef2f7;
+        }
+        
+        .tab.active {
+            background: white;
+            color: #8E44AD;
+            border-bottom: 3px solid #8E44AD;
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 2rem;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .graph-container {
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            position: relative;
+        }
+        
+        .graph-header {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .graph-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .graph-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .graph-body {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.95);
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 0.9rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        
+        .node-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.95);
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 300px;
+            display: none;
+        }
+        
+        .node-info h3 {
+            color: #8E44AD;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #8E44AD;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #8E44AD;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        button {
+            background: #8E44AD;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #7D3C98;
+        }
+        
+        select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 1200px) {
+            .container {
+                padding: 0.5rem;
+            }
+            
+            .graph-container {
+                height: 500px;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="http://localhost:8080/" class="back-btn">←</a>
+            <div>
+                <h1>陈毅知识图谱</h1>
+                <p class="subtitle">基于Neo4j知识图谱的三维度可视化：完整知识图谱、人物事件关系、地点事件关联</p>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="node-count">--</div>
+                <div class="stat-label">知识图谱节点</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="edge-count">--</div>
+                <div class="stat-label">关系连接数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="event-count">--</div>
+                <div class="stat-label">事件总数</div>
+            </div>
+        </div>
+        
+        <div class="tab-container">
+            <div class="tabs">
+                <div class="tab active" data-tab="complete">完整知识图谱</div>
+                <div class="tab" data-tab="person-event">人物-事件关系</div>
+                <div class="tab" data-tab="location-event">地点-事件关联</div>
+            </div>
+            
+            <div class="tab-content active" id="complete-tab">
+                <div class="graph-container" id="complete-graph">
+                    <div class="graph-header">
+                        <div class="graph-title">陈毅完整知识图谱</div>
+                        <div class="graph-controls">
+                            <span id="complete-stats">加载中...</span>
+                            <button onclick="resetView('complete')">重置视图</button>
+                            <select id="complete-layout" onchange="changeLayout('complete', this.value)">
+                                <option value="force">力导向布局</option>
+                                <option value="circular">环形布局</option>
+                                <option value="radial">径向布局</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="graph-body">
+                        <svg id="complete-svg" width="100%" height="100%"></svg>
+                        <div class="loading" id="complete-loading">
+                            <div class="spinner"></div>
+                            <div>正在加载完整知识图谱数据...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="legend" id="complete-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #3498DB;"></div>
+                        <span>陈毅</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #2ECC71;"></div>
+                        <span>人物</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #E74C3C;"></div>
+                        <span>地点</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #9B59B6;"></div>
+                        <span>事件</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #F39C12;"></div>
+                        <span>组织</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="person-event-tab">
+                <div class="graph-container" id="person-event-graph">
+                    <div class="graph-header">
+                        <div class="graph-title">人物-事件关系网络</div>
+                        <div class="graph-controls">
+                            <span id="person-stats">加载中...</span>
+                            <button onclick="resetView('person-event')">重置视图</button>
+                            <button onclick="filterByRelationType()">按关系类型筛选</button>
+                        </div>
+                    </div>
+                    <div class="graph-body">
+                        <svg id="person-event-svg" width="100%" height="100%"></svg>
+                        <div class="loading" id="person-loading">
+                            <div class="spinner"></div>
+                            <div>正在加载人物-事件数据...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="legend" id="person-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #3498DB;"></div>
+                        <span>陈毅（核心）</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #2ECC71;"></div>
+                        <span>同事关系</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #E74C3C;"></div>
+                        <span>认识关系</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #9B59B6;"></div>
+                        <span>亲缘关系</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #F39C12;"></div>
+                        <span>其他关系</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="location-event-tab">
+                <div class="graph-container" id="location-event-graph">
+                    <div class="graph-header">
+                        <div class="graph-title">地点-事件关联网络</div>
+                        <div class="graph-controls">
+                            <span id="location-stats">加载中...</span>
+                            <button onclick="resetView('location-event')">重置视图</button>
+                            <button onclick="showEventTimeline()">显示时间线</button>
+                        </div>
+                    </div>
+                    <div class="graph-body">
+                        <svg id="location-event-svg" width="100%" height="100%"></svg>
+                        <div class="loading" id="location-loading">
+                            <div class="spinner"></div>
+                            <div>正在加载地点-事件数据...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="legend" id="location-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #3498DB;"></div>
+                        <span>国内地点</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #E74C3C;"></div>
+                        <span>国际地点</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #2ECC71;"></div>
+                        <span>事件节点</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #F39C12;"></div>
+                        <span>时间线</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="node-info" id="node-info">
+            <h3 id="node-name">节点名称</h3>
+            <div id="node-details">
+                <p><strong>类型：</strong><span id="node-type">--</span></p>
+                <p><strong>ID：</strong><span id="node-id">--</span></p>
+                <p><strong>连接数：</strong><span id="node-degree">--</span></p>
+                <p><strong>详情：</strong><span id="node-description">--</span></p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let completeData = null;
+        let personEventData = null;
+        let locationEventData = null;
+        let currentTab = 'complete';
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 标签页切换
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabId = this.dataset.tab;
+                    switchTab(tabId);
+                });
+            });
+            
+            // 加载数据
+            loadAllData();
+        });
+        
+        // 切换标签页
+        function switchTab(tabId) {
+            // 更新标签
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.dataset.tab === tabId) {
+                    tab.classList.add('active');
+                }
+            });
+            
+            // 更新内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabId}-tab`).classList.add('active');
+            
+            currentTab = tabId;
+            
+            // 渲染对应的图表
+            setTimeout(() => {
+                if (tabId === 'complete' && completeData) {
+                    renderCompleteGraph();
+                } else if (tabId === 'person-event' && personEventData) {
+                    renderPersonEventGraph();
+                } else if (tabId === 'location-event' && locationEventData) {
+                    renderLocationEventGraph();
+                }
+            }, 100);
+        }
+        
+        // 加载所有数据
+        async function loadAllData() {
+            try {
+                console.log('开始加载数据...');
+                
+                // 对文件名进行完整URL编码
+                const encodeFileName = (filename) => {
+                    return encodeURIComponent(filename).replace(/\(/g, '%28').replace(/\)/g, '%29');
+                };
+                
+                const file1 = 'neo4j_query_table_data_2026-4-19 (1).csv';
+                const file3 = 'neo4j_query_table_data_2026-4-19 (3).csv';
+                const file4 = 'neo4j_query_table_data_2026-4-19 (4).csv';
+                
+                console.log('文件1:', file1, '编码后:', encodeFileName(file1));
+                console.log('文件3:', file3, '编码后:', encodeFileName(file3));
+                console.log('文件4:', file4, '编码后:', encodeFileName(file4));
+                
+                // 加载完整知识图谱数据
+                const completeResponse = await fetch(encodeFileName(file1));
+                if (!completeResponse.ok) {
+                    throw new Error(`完整数据加载失败: ${completeResponse.status} ${completeResponse.statusText}`);
+                }
+                const completeText = await completeResponse.text();
+                console.log('完整数据加载完成，大小:', completeText.length);
+                completeData = parseCSV(completeText);
+                console.log('完整数据解析完成，行数:', completeData.length);
+                document.getElementById('complete-loading').style.display = 'none';
+                
+                // 加载人物-事件数据
+                const personResponse = await fetch(encodeFileName(file3));
+                if (!personResponse.ok) {
+                    throw new Error(`人物数据加载失败: ${personResponse.status} ${personResponse.statusText}`);
+                }
+                const personText = await personResponse.text();
+                console.log('人物数据加载完成，大小:', personText.length);
+                personEventData = parseCSV(personText);
+                console.log('人物数据解析完成，行数:', personEventData.length);
+                document.getElementById('person-loading').style.display = 'none';
+                
+                // 加载地点-事件数据
+                const locationResponse = await fetch(encodeFileName(file4));
+                if (!locationResponse.ok) {
+                    throw new Error(`地点数据加载失败: ${locationResponse.status} ${locationResponse.statusText}`);
+                }
+                const locationText = await locationResponse.text();
+                console.log('地点数据加载完成，大小:', locationText.length);
+                locationEventData = parseCSV(locationText);
+                console.log('地点数据解析完成，行数:', locationEventData.length);
+                document.getElementById('location-loading').style.display = 'none';
+                
+                // 更新统计信息
+                updateStats();
+                
+                // 渲染当前标签页的图表
+                console.log('当前标签:', currentTab);
+                if (currentTab === 'complete') {
+                    renderCompleteGraph();
+                } else if (currentTab === 'person-event') {
+                    renderPersonEventGraph();
+                } else if (currentTab === 'location-event') {
+                    renderLocationEventGraph();
+                }
+                
+                console.log('所有数据加载和渲染完成');
+                
+            } catch (error) {
+                console.error('数据加载失败:', error);
+                
+                // 显示错误信息
+                const errorMsg = `数据加载失败: ${error.message}\n\n请确保:\n1. HTTP服务器正在运行\n2. CSV文件在正确目录下\n3. 通过http://localhost:8080/访问页面`;
+                
+                document.getElementById('complete-loading').innerHTML = 
+                    `<div style="color: #e74c3c;">${errorMsg}</div>`;
+                document.getElementById('person-loading').innerHTML = 
+                    `<div style="color: #e74c3c;">${errorMsg}</div>`;
+                document.getElementById('location-loading').innerHTML = 
+                    `<div style="color: #e74c3c;">${errorMsg}</div>`;
+                    
+                // 设置统计数据为错误状态
+                document.getElementById('node-count').textContent = '加载失败';
+                document.getElementById('edge-count').textContent = '加载失败';
+                document.getElementById('event-count').textContent = '加载失败';
+            }
+        }
+        
+        // 解析CSV数据
+        function parseCSV(csvText) {
+            console.log('开始解析CSV数据，长度:', csvText.length);
+            const lines = csvText.split('\n');
+            console.log('总行数:', lines.length);
+            
+            if (lines.length < 2) {
+                console.warn('CSV数据不足');
+                return [];
+            }
+            
+            // 解析CSV行，处理引号内的逗号
+            function parseCSVLine(line) {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    const nextChar = line[i + 1];
+                    
+                    if (char === '"') {
+                        if (inQuotes && nextChar === '"') {
+                            // 转义引号
+                            current += '"';
+                            i++; // 跳过下一个引号
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(current);
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                
+                result.push(current);
+                return result;
+            }
+            
+            // 解析表头
+            const headers = parseCSVLine(lines[0]).map(h => h.trim());
+            console.log('表头:', headers);
+            
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line === '') continue;
+                
+                try {
+                    const values = parseCSVLine(line).map(v => v.trim());
+                    const row = {};
+                    
+                    for (let j = 0; j < headers.length; j++) {
+                        row[headers[j]] = values[j] || '';
+                    }
+                    
+                    data.push(row);
+                } catch (error) {
+                    console.error(`解析第${i+1}行时出错:`, error, '行内容:', line);
+                }
+            }
+            
+            console.log(`解析完成，共${data.length}行数据`);
+            return data;
+        }
+        
+        // 更新统计信息
+        function updateStats() {
+            // 统计节点和边
+            const nodes = new Set();
+            const edges = new Set();
+            const events = new Set();
+            
+            // 从完整数据中统计
+            if (completeData) {
+                completeData.forEach(row => {
+                    const n = row.n || row.chenyi;
+                    const m = row.m;
+                    if (n) nodes.add(n);
+                    if (m) nodes.add(m);
+                    if (row.r) edges.add(row.r);
+                });
+            }
+            
+            // 从地点-事件数据中统计事件
+            if (locationEventData) {
+                locationEventData.forEach(row => {
+                    const e = row.e;
+                    if (e && e.includes('Event')) events.add(e);
+                });
+            }
+            
+            document.getElementById('node-count').textContent = nodes.size;
+            document.getElementById('edge-count').textContent = edges.size;
+            document.getElementById('event-count').textContent = events.size;
+        }
+        
+        // 渲染完整知识图谱
+        function renderCompleteGraph() {
+            console.log('开始渲染完整知识图谱');
+            
+            if (!completeData || completeData.length === 0) {
+                console.error('完整知识图谱数据为空');
+                document.getElementById('complete-svg').innerHTML = 
+                    '<text x="50%" y="50%" text-anchor="middle" fill="#e74c3c">数据为空或加载失败</text>';
+                return;
+            }
+            
+            const svg = d3.select('#complete-svg');
+            svg.selectAll('*').remove();
+            
+            const container = document.getElementById('complete-svg').parentElement;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            console.log(`SVG尺寸: ${width}x${height}`);
+            
+            // 创建力导向图
+            const simulation = d3.forceSimulation()
+                .force('link', d3.forceLink().id(d => d.id).distance(100))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(40));
+            
+            // 准备数据
+            const nodesMap = new Map();
+            const links = [];
+            
+            console.log('处理数据行数:', completeData.length);
+            
+            completeData.forEach((row, i) => {
+                const sourceNode = row.n;
+                const targetNode = row.m;
+                const relation = row.r;
+                
+                if (sourceNode && targetNode && relation) {
+                    // 提取节点信息
+                    const parseNode = (nodeStr) => {
+                        if (!nodeStr) return null;
+                        
+                        // 尝试匹配模式: (:Person {name: 林彪, nodeId: agent_person/8329})
+                        const match = nodeStr.match(/\(:(.*?)\s*\{name:\s*(.*?),\s*nodeId:\s*(.*?)\}\)/);
+                        if (match) {
+                            const type = match[1].trim();
+                            let name = match[2].trim();
+                            const id = match[3].trim();
+                            
+                            // 移除可能的引号
+                            name = name.replace(/^["']|["']$/g, '');
+                            
+                            return {
+                                type: type,
+                                name: name,
+                                id: id,
+                                full: nodeStr
+                            };
+                        }
+                        
+                        console.warn(`无法解析节点: ${nodeStr}`);
+                        return { 
+                            type: 'unknown', 
+                            name: nodeStr.substring(0, 20) + (nodeStr.length > 20 ? '...' : ''), 
+                            id: `node_${i}_${Date.now()}`, 
+                            full: nodeStr 
+                        };
+                    };
+                    
+                    const source = parseNode(sourceNode);
+                    const target = parseNode(targetNode);
+                    
+                    if (source && target) {
+                        // 添加节点
+                        if (!nodesMap.has(source.id)) {
+                            nodesMap.set(source.id, {
+                                id: source.id,
+                                name: source.name,
+                                type: source.type,
+                                degree: 0,
+                                x: Math.random() * width,
+                                y: Math.random() * height
+                            });
+                        }
+                        
+                        if (!nodesMap.has(target.id)) {
+                            nodesMap.set(target.id, {
+                                id: target.id,
+                                name: target.name,
+                                type: target.type,
+                                degree: 0,
+                                x: Math.random() * width,
+                                y: Math.random() * height
+                            });
+                        }
+                        
+                        // 添加连接
+                        links.push({
+                            source: source.id,
+                            target: target.id,
+                            relation: relation
+                        });
+                        
+                        // 更新度数
+                        nodesMap.get(source.id).degree++;
+                        nodesMap.get(target.id).degree++;
+                    }
+                }
+            });
+            
+            const nodes = Array.from(nodesMap.values());
+            
+            console.log(`生成 ${nodes.length} 个节点和 ${links.length} 个连接`);
+            
+            // 更新统计信息
+            document.getElementById('complete-stats').textContent = 
+                `节点: ${nodes.length} | 连接: ${links.length}`;
+            
+            // 创建连接
+            const link = svg.append('g')
+                .selectAll('line')
+                .data(links)
+                .enter().append('line')
+                .attr('stroke', '#ccc')
+                .attr('stroke-width', 2)
+                .attr('stroke-opacity', 0.6);
+            
+            // 创建节点
+            const node = svg.append('g')
+                .selectAll('circle')
+                .data(nodes)
+                .enter().append('circle')
+                .attr('r', d => {
+                    const baseSize = d.name.includes('陈毅') ? 20 : 10;
+                    return Math.max(baseSize, Math.min(25, baseSize + d.degree / 3));
+                })
+                .attr('fill', d => getNodeColor(d.type))
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2)
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended))
+                .on('mouseover', function(event, d) {
+                    showNodeInfo(d);
+                })
+                .on('mouseout', function() {
+                    hideNodeInfo();
+                });
+            
+            // 添加节点标签
+            const text = svg.append('g')
+                .selectAll('text')
+                .data(nodes)
+                .enter().append('text')
+                .text(d => {
+                    const displayName = d.name.length > 8 ? d.name.substring(0, 8) + '...' : d.name;
+                    return displayName;
+                })
+                .attr('font-size', '10px')
+                .attr('dx', 15)
+                .attr('dy', 4)
+                .attr('fill', '#333');
+            
+            // 设置模拟
+            simulation
+                .nodes(nodes)
+                .on('tick', ticked);
+            
+            simulation.force('link')
+                .links(links);
+            
+            function ticked() {
+                link
+                    .attr('x1', d => {
+                        const sourceNode = nodes.find(n => n.id === d.source);
+                        return sourceNode ? sourceNode.x : 0;
+                    })
+                    .attr('y1', d => {
+                        const sourceNode = nodes.find(n => n.id === d.source);
+                        return sourceNode ? sourceNode.y : 0;
+                    })
+                    .attr('x2', d => {
+                        const targetNode = nodes.find(n => n.id === d.target);
+                        return targetNode ? targetNode.x : 0;
+                    })
+                    .attr('y2', d => {
+                        const targetNode = nodes.find(n => n.id === d.target);
+                        return targetNode ? targetNode.y : 0;
+                    });
+                
+                node
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+                
+                text
+                    .attr('x', d => d.x)
+                    .attr('y', d => d.y);
+            }
+            
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+            
+            // 添加SVG尺寸
+            svg.attr('width', width)
+               .attr('height', height);
+               
+            console.log('完整知识图谱渲染完成');
+        }
+        
+        // 渲染人物-事件关系图
+        function renderPersonEventGraph() {
+            console.log('开始渲染人物-事件关系图');
+            
+            if (!personEventData || personEventData.length === 0) {
+                console.error('人物-事件关系数据为空');
+                document.getElementById('person-event-svg').innerHTML = 
+                    '<text x="50%" y="50%" text-anchor="middle" fill="#e74c3c">数据为空或加载失败</text>';
+                return;
+            }
+            
+            const svg = d3.select('#person-event-svg');
+            svg.selectAll('*').remove();
+            
+            const container = document.getElementById('person-event-svg').parentElement;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            console.log(`人物-事件SVG尺寸: ${width}x${height}`);
+            
+            // 准备数据
+            const nodes = new Map();
+            const links = [];
+            
+            console.log('处理人物-事件数据行数:', personEventData.length);
+            
+            personEventData.forEach((row, i) => {
+                const chenyi = row.chenyi;
+                const relation = row.r1;
+                const person = row.n;
+                
+                if (chenyi && person && relation) {
+                    // 提取人物信息
+                    const parsePerson = (nodeStr) => {
+                        if (!nodeStr) return null;
+                        
+                        // 尝试匹配模式: (:Person {name: 陈昊苏, nodeId: agent_person/10566})
+                        const match = nodeStr.match(/\(:(.*?)\s*\{name:\s*(.*?),\s*nodeId:\s*(.*?)\}\)/);
+                        if (match) {
+                            const type = match[1].trim();
+                            let name = match[2].trim();
+                            const id = match[3].trim();
+                            
+                            // 移除可能的引号
+                            name = name.replace(/^["']|["']$/g, '');
+                            
+                            return {
+                                type: type,
+                                name: name,
+                                id: id
+                            };
+                        }
+                        
+                        console.warn(`无法解析人物节点: ${nodeStr}`);
+                        return { 
+                            type: 'Person', 
+                            name: nodeStr.substring(0, 20) + (nodeStr.length > 20 ? '...' : ''), 
+                            id: `person_${i}_${Date.now()}`
+                        };
+                    };
+                    
+                    const chenyiPerson = parsePerson(chenyi);
+                    const otherPerson = parsePerson(person);
+                    
+                    if (chenyiPerson && otherPerson) {
+                        // 添加节点
+                        if (!nodes.has(chenyiPerson.id)) {
+                            nodes.set(chenyiPerson.id, {
+                                id: chenyiPerson.id,
+                                name: chenyiPerson.name,
+                                type: chenyiPerson.type,
+                                degree: 0,
+                                x: Math.random() * width,
+                                y: Math.random() * height
+                            });
+                        }
+                        
+                        if (!nodes.has(otherPerson.id)) {
+                            nodes.set(otherPerson.id, {
+                                id: otherPerson.id,
+                                name: otherPerson.name,
+                                type: otherPerson.type,
+                                degree: 0,
+                                x: Math.random() * width,
+                                y: Math.random() * height
+                            });
+                        }
+                        
+                        // 解析关系类型
+                        let relationType = 'unknown';
+                        if (relation.includes('亲缘')) relationType = '亲缘';
+                        else if (relation.includes('朋友')) relationType = '朋友';
+                        else if (relation.includes('夫妻')) relationType = '夫妻';
+                        else if (relation.includes('同事')) relationType = '同事';
+                        else if (relation.includes('认识')) relationType = '认识';
+                        else if (relation.includes('敌人')) relationType = '敌人';
+                        else if (relation.includes('受影响')) relationType = '受影响';
+                        
+                        // 添加连接
+                        links.push({
+                            source: chenyiPerson.id,
+                            target: otherPerson.id,
+                            relation: relation,
+                            relationType: relationType
+                        });
+                        
+                        // 更新度数
+                        nodes.get(chenyiPerson.id).degree++;
+                        nodes.get(otherPerson.id).degree++;
+                    }
+                }
+            });
+            
+            const nodesArray = Array.from(nodes.values());
+            
+            console.log(`生成 ${nodesArray.length} 个人物节点和 ${links.length} 个关系连接`);
+            
+            // 更新统计信息
+            document.getElementById('person-stats').textContent = 
+                `人物: ${nodesArray.length} | 关系: ${links.length}`;
+            
+            // 创建力导向图
+            const simulation = d3.forceSimulation(nodesArray)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(120))
+                .force('charge', d3.forceManyBody().strength(-250))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(35));
+            
+            // 创建连接
+            const link = svg.append('g')
+                .selectAll('line')
+                .data(links)
+                .enter().append('line')
+                .attr('stroke', d => getRelationColor(d.relation))
+                .attr('stroke-width', d => {
+                    // 根据关系类型设置不同粗细
+                    if (d.relationType === '亲缘') return 3;
+                    if (d.relationType === '夫妻') return 3;
+                    if (d.relationType === '同事') return 2;
+                    if (d.relationType === '朋友') return 2;
+                    return 1.5;
+                })
+                .attr('stroke-opacity', 0.7);
+            
+            // 创建节点
+            const node = svg.append('g')
+                .selectAll('circle')
+                .data(nodesArray)
+                .enter().append('circle')
+                .attr('r', d => {
+                    if (d.name.includes('陈毅')) return 25;
+                    const baseSize = 12;
+                    return Math.max(baseSize, Math.min(20, baseSize + d.degree / 4));
+                })
+                .attr('fill', d => {
+                    if (d.name.includes('陈毅')) return '#3498DB'; // 陈毅用蓝色
+                    return '#2ECC71'; // 其他人用绿色
+                })
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2)
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended))
+                .on('mouseover', function(event, d) {
+                    showNodeInfo(d);
+                })
+                .on('mouseout', function() {
+                    hideNodeInfo();
+                });
+            
+            // 添加节点标签
+            const text = svg.append('g')
+                .selectAll('text')
+                .data(nodesArray)
+                .enter().append('text')
+                .text(d => {
+                    if (d.name.includes('陈毅')) return d.name;
+                    const displayName = d.name.length > 6 ? d.name.substring(0, 6) + '...' : d.name;
+                    return displayName;
+                })
+                .attr('font-size', d => d.name.includes('陈毅') ? '11px' : '9px')
+                .attr('dx', d => d.name.includes('陈毅') ? 28 : 15)
+                .attr('dy', d => d.name.includes('陈毅') ? 5 : 3)
+                .attr('fill', d => d.name.includes('陈毅') ? '#1a237e' : '#333')
+                .attr('font-weight', d => d.name.includes('陈毅') ? 'bold' : 'normal');
+            
+            // 动画
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => {
+                        const sourceNode = nodesArray.find(n => n.id === d.source);
+                        return sourceNode ? sourceNode.x : 0;
+                    })
+                    .attr('y1', d => {
+                        const sourceNode = nodesArray.find(n => n.id === d.source);
+                        return sourceNode ? sourceNode.y : 0;
+                    })
+                    .attr('x2', d => {
+                        const targetNode = nodesArray.find(n => n.id === d.target);
+                        return targetNode ? targetNode.x : 0;
+                    })
+                    .attr('y2', d => {
+                        const targetNode = nodesArray.find(n => n.id === d.target);
+                        return targetNode ? targetNode.y : 0;
+                    });
+                
+                node
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+                
+                text
+                    .attr('x', d => d.x)
+                    .attr('y', d => d.y);
+            });
+            
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+            
+            // 添加SVG尺寸
+            svg.attr('width', width)
+               .attr('height', height);
+               
+            console.log('人物-事件关系图渲染完成');
+        }
+        
+        // 渲染地点-事件关联图
+        function renderLocationEventGraph() {
+            console.log('开始渲染地点-事件关联图');
+            
+            if (!locationEventData || locationEventData.length === 0) {
+                console.error('地点-事件关联数据为空');
+                document.getElementById('location-event-svg').innerHTML = 
+                    '<text x="50%" y="50%" text-anchor="middle" fill="#e74c3c">数据为空或加载失败</text>';
+                return;
+            }
+            
+            const svg = d3.select('#location-event-svg');
+            svg.selectAll('*').remove();
+            
+            const container = document.getElementById('location-event-svg').parentElement;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            console.log(`地点-事件SVG尺寸: ${width}x${height}`);
+            
+            // 准备数据
+            const locations = new Map();
+            const events = new Map();
+            const links = [];
+            
+            console.log('处理地点-事件数据行数:', locationEventData.length);
+            
+            locationEventData.forEach((row, i) => {
+                const location = row.l;
+                const event = row.e;
+                
+                if (location && event) {
+                    // 解析地点
+                    const parseLocation = (locStr) => {
+                        if (!locStr) return null;
+                        
+                        // 尝试匹配模式: (:Location {name: 巴黎, nodeId: 397.0})
+                        const match = locStr.match(/\(:(.*?)\s*\{name:\s*(.*?),\s*nodeId:\s*(.*?)\}\)/);
+                        if (match) {
+                            const type = match[1].trim();
+                            let name = match[2].trim();
+                            const id = match[3].trim();
+                            
+                            // 移除可能的引号
+                            name = name.replace(/^["']|["']$/g, '');
+                            
+                            return {
+                                type: type,
+                                name: name,
+                                id: id
+                            };
+                        }
+                        
+                        console.warn(`无法解析地点节点: ${locStr}`);
+                        return { 
+                            type: 'Location', 
+                            name: locStr.substring(0, 20) + (locStr.length > 20 ? '...' : ''), 
+                            id: `location_${i}_${Date.now()}`
+                        };
+                    };
+                    
+                    // 解析事件
+                    const parseEvent = (eventStr) => {
+                        if (!eventStr) return null;
+                        
+                        // 尝试匹配模式: (:Event {eventId: 403, predicate: 参加, name: 陈毅加入工学世界社（巴黎）, startDate: 1920})
+                        const match = eventStr.match(/\(:(.*?)\s*\{eventId:\s*(.*?),\s*name:\s*(.*?),\s*startDate:/);
+                        if (match) {
+                            const type = match[1].trim();
+                            const eventId = match[2].trim();
+                            let name = match[3].trim();
+                            
+                            // 移除可能的引号
+                            name = name.replace(/^["']|["']$/g, '');
+                            
+                            return {
+                                type: type,
+                                name: name,
+                                id: `event_${eventId}_${i}`,
+                                eventId: eventId
+                            };
+                        }
+                        
+                        // 尝试其他格式
+                        const match2 = eventStr.match(/name:\s*(.*?),/);
+                        if (match2) {
+                            let name = match2[1].trim();
+                            name = name.replace(/^["']|["']$/g, '');
+                            return {
+                                type: 'Event',
+                                name: name,
+                                id: `event_${i}_${Date.now()}`
+                            };
+                        }
+                        
+                        console.warn(`无法解析事件节点: ${eventStr}`);
+                        return { 
+                            type: 'Event', 
+                            name: eventStr.substring(0, 30) + (eventStr.length > 30 ? '...' : ''), 
+                            id: `event_${i}_${Date.now()}`
+                        };
+                    };
+                    
+                    const locationObj = parseLocation(location);
+                    const eventObj = parseEvent(event);
+                    
+                    if (locationObj && eventObj) {
+                        // 添加地点节点
+                        if (!locations.has(locationObj.id)) {
+                            locations.set(locationObj.id, {
+                                ...locationObj,
+                                degree: 0,
+                                x: Math.random() * width,
+                                y: Math.random() * height
+                            });
+                        }
+                        
+                        // 添加事件节点
+                        if (!events.has(eventObj.id)) {
+                            events.set(eventObj.id, {
+                                ...eventObj,
+                                degree: 0,
+                                x: Math.random() * width,
+                                y: Math.random() * height
+                            });
+                        }
+                        
+                        // 添加连接
+                        links.push({
+                            source: locationObj.id,
+                            target: eventObj.id,
+                            type: 'occurs_in'
+                        });
+                        
+                        // 更新度数
+                        locations.get(locationObj.id).degree++;
+                        events.get(eventObj.id).degree++;
+                    }
+                }
+            });
+            
+            const locationArray = Array.from(locations.values());
+            const eventArray = Array.from(events.values());
+            const nodes = [...locationArray, ...eventArray];
+            
+            console.log(`生成 ${locationArray.length} 个地点节点、${eventArray.length} 个事件节点和 ${links.length} 个关联连接`);
+            
+            // 更新统计信息
+            document.getElementById('location-stats').textContent = 
+                `地点: ${locationArray.length} | 事件: ${eventArray.length} | 关联: ${links.length}`;
+            
+            // 创建力导向图
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(150))
+                .force('charge', d3.forceManyBody().strength(-180))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(40));
+            
+            // 创建连接
+            const link = svg.append('g')
+                .selectAll('line')
+                .data(links)
+                .enter().append('line')
+                .attr('stroke', '#95a5a6')
+                .attr('stroke-width', 1.5)
+                .attr('stroke-opacity', 0.6)
+                .attr('stroke-dasharray', '4,2');
+            
+            // 创建节点
+            const node = svg.append('g')
+                .selectAll('circle')
+                .data(nodes)
+                .enter().append('circle')
+                .attr('r', d => {
+                    if (d.type === 'Location') {
+                        // 地点节点根据连接数量调整大小
+                        return Math.max(12, Math.min(20, 12 + d.degree / 2));
+                    } else {
+                        // 事件节点
+                        return Math.max(8, Math.min(15, 8 + d.degree / 3));
+                    }
+                })
+                .attr('fill', d => {
+                    if (d.type === 'Location') {
+                        // 国内重要地点用蓝色，其他地点用红色
+                        const chineseLocations = ['北京', '上海', '成都', '南京', '重庆', '广州', '武汉', '西安'];
+                        const isChinese = chineseLocations.some(loc => d.name.includes(loc));
+                        return isChinese ? '#3498DB' : '#E74C3C';
+                    } else {
+                        // 事件节点用绿色
+                        return '#2ECC71';
+                    }
+                })
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2)
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended))
+                .on('mouseover', function(event, d) {
+                    showNodeInfo(d);
+                })
+                .on('mouseout', function() {
+                    hideNodeInfo();
+                });
+            
+            // 添加节点标签
+            const text = svg.append('g')
+                .selectAll('text')
+                .data(nodes)
+                .enter().append('text')
+                .text(d => {
+                    if (d.type === 'Location') {
+                        // 地点名称简写
+                        return d.name.length > 6 ? d.name.substring(0, 6) + '...' : d.name;
+                    } else {
+                        // 事件名称简写：移除"陈毅"前缀，保留核心内容
+                        let shortName = d.name.replace('陈毅', '').trim();
+                        if (shortName.startsWith('参加') || shortName.startsWith('出席') || shortName.startsWith('会见')) {
+                            shortName = shortName.substring(0, 12);
+                        } else {
+                            shortName = shortName.substring(0, 10);
+                        }
+                        return shortName + (d.name.length > shortName.length + 2 ? '...' : '');
+                    }
+                })
+                .attr('font-size', d => d.type === 'Location' ? '10px' : '8px')
+                .attr('dx', d => d.type === 'Location' ? 15 : 10)
+                .attr('dy', d => d.type === 'Location' ? 4 : 3)
+                .attr('fill', d => d.type === 'Location' ? '#2c3e50' : '#7f8c8d');
+            
+            // 动画
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => {
+                        const sourceNode = nodes.find(n => n.id === d.source);
+                        return sourceNode ? sourceNode.x : 0;
+                    })
+                    .attr('y1', d => {
+                        const sourceNode = nodes.find(n => n.id === d.source);
+                        return sourceNode ? sourceNode.y : 0;
+                    })
+                    .attr('x2', d => {
+                        const targetNode = nodes.find(n => n.id === d.target);
+                        return targetNode ? targetNode.x : 0;
+                    })
+                    .attr('y2', d => {
+                        const targetNode = nodes.find(n => n.id === d.target);
+                        return targetNode ? targetNode.y : 0;
+                    });
+                
+                node
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+                
+                text
+                    .attr('x', d => d.x)
+                    .attr('y', d => d.y);
+            });
+            
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+            
+            // 添加SVG尺寸
+            svg.attr('width', width)
+               .attr('height', height);
+               
+            console.log('地点-事件关联图渲染完成');
+        }
+        
+        // 辅助函数
+        function getNodeColor(type) {
+            const colors = {
+                'Person': '#2ECC71',
+                'Location': '#E74C3C',
+                'Event': '#9B59B6',
+                'Organization': '#F39C12',
+                'unknown': '#95a5a6'
+            };
+            return colors[type] || '#3498DB';
+        }
+        
+        function getRelationColor(relation) {
+            if (!relation) return '#95a5a6';
+            
+            if (relation.includes('同事')) return '#2ECC71';
+            if (relation.includes('认识')) return '#E74C3C';
+            if (relation.includes('亲缘')) return '#9B59B6';
+            if (relation.includes('朋友')) return '#3498DB';
+            if (relation.includes('敌人')) return '#E74C3C';
+            if (relation.includes('夫妻')) return '#F39C12';
+            
+            return '#95a5a6';
+        }
+        
+        function showNodeInfo(node) {
+            const infoDiv = document.getElementById('node-info');
+            document.getElementById('node-name').textContent = node.name;
+            document.getElementById('node-type').textContent = node.type || '未知';
+            document.getElementById('node-id').textContent = node.id || '--';
+            document.getElementById('node-degree').textContent = node.degree || '0';
+            
+            let description = '';
+            if (node.type === 'person') {
+                description = '人物节点，表示与陈毅相关的人物';
+            } else if (node.type === 'location') {
+                description = '地点节点，表示事件发生的地点';
+            } else if (node.type === 'event') {
+                description = '事件节点，表示陈毅的重要历史事件';
+            } else {
+                description = node.type || '知识图谱节点';
+            }
+            
+            document.getElementById('node-description').textContent = description;
+            infoDiv.style.display = 'block';
+        }
+        
+        function hideNodeInfo() {
+            document.getElementById('node-info').style.display = 'none';
+        }
+        
+        function resetView(graphId) {
+            if (graphId === 'complete') {
+                renderCompleteGraph();
+            } else if (graphId === 'person-event') {
+                renderPersonEventGraph();
+            } else if (graphId === 'location-event') {
+                renderLocationEventGraph();
+            }
+        }
+        
+        function changeLayout(graphId, layout) {
+            // 布局切换功能
+            alert(`切换到${layout}布局（功能待完善）`);
+        }
+        
+        function filterByRelationType() {
+            alert('按关系类型筛选功能（待完善）');
+        }
+        
+        function showEventTimeline() {
+            alert('显示事件时间线功能（待完善）');
+        }
+    </script>
+</body>
+</html>

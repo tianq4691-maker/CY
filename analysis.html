@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>陈毅基本数据分析</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f8f9fa;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #27AE60 0%, #16a085 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .back-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .header-content {
+            flex: 1;
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.3rem;
+        }
+        
+        .header .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .data-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .data-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        
+        .card-header {
+            background: #27AE60;
+            color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .toggle-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background 0.3s;
+        }
+        
+        .toggle-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .card-content {
+            padding: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+        }
+        
+        .card-content.expanded {
+            max-height: 800px;
+        }
+        
+        .chart-container {
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .chart-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .chart-desc {
+            margin-top: 1rem;
+            color: #666;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            text-align: left;
+        }
+        
+        .analysis-intro {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .intro-title {
+            color: #27AE60;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+        }
+        
+        .intro-text {
+            color: #666;
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+        
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .stat-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+            border-left: 4px solid #27AE60;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #27AE60;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            color: #666;
+        }
+        
+        .empty-placeholder {
+            padding: 3rem;
+            text-align: center;
+            color: #999;
+            font-size: 1.1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .data-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                padding: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .stats-overview {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="back-btn">←</a>
+        <div class="header-content">
+            <h1>陈毅基本数据分析</h1>
+            <p class="subtitle">展示陈毅生平事件的数据统计分析图表</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="analysis-intro">
+            <h2 class="intro-title">数据分析概述</h2>
+            <p class="intro-text">本部分基于陈毅生平事件数据集，通过多种可视化图表展示事件分布、类型统计、时间线分布等分析结果。数据集包含1901-1972年间陈毅元帅的主要历史事件，涵盖五个历史阶段：早年求学、武装革命、新四军抗战、解放战争、外交建设。</p>
+            <p class="intro-text">点击下方卡片标题即可查看对应的分析图表，图表内容基于实际数据生成，反映了陈毅历史事件的分布特征和统计规律。</p>
+            
+            <div class="stats-overview">
+                <div class="stat-item">
+                    <div class="stat-value">999</div>
+                    <div class="stat-label">总事件数量</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">72</div>
+                    <div class="stat-label">年份跨度</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">143</div>
+                    <div class="stat-label">独特地点</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">历史阶段</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="data-grid">
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-title">事件类型分布</div>
+                    <button class="toggle-btn">+</button>
+                </div>
+                <div class="card-content">
+                    <div class="chart-container">
+                        <img src="可视化/事件类型分布.png" alt="事件类型分布" class="chart-image">
+                        <div class="chart-desc">
+                            本图表展示了陈毅生平事件按照类型分类的分布情况。不同类型的事件用不同颜色表示，反映了陈毅在不同领域的活动频率和重点。从图中可以看出，军事活动、政治工作和外交事务是陈毅生平的主要组成部分。
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-title">各阶段事件分布</div>
+                    <button class="toggle-btn">+</button>
+                </div>
+                <div class="card-content">
+                    <div class="chart-container">
+                        <img src="可视化/各阶段事件分布.png" alt="各阶段事件分布" class="chart-image">
+                        <div class="chart-desc">
+                            本图表展示了五个历史阶段中事件数量的分布情况。每个阶段用不同的颜色标识，柱状图的高度表示该阶段的事件数量。通过对比可以看出，新四军抗战和外交建设阶段的事件记录最为丰富。
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-title">事件时间线分布</div>
+                    <button class="toggle-btn">+</button>
+                </div>
+                <div class="card-content">
+                    <div class="chart-container">
+                        <img src="可视化/事件时间线分布.png" alt="事件时间线分布" class="chart-image">
+                        <div class="chart-desc">
+                            本图表展示了1901-1972年间事件在时间线上的分布密度。横轴表示时间，纵轴表示事件密度。可以看出，1937-1945年（抗日战争时期）和1949-1966年（建国初期）是事件密集的两个高峰期。
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-title">各阶段事件占比</div>
+                    <button class="toggle-btn">+</button>
+                </div>
+                <div class="card-content">
+                    <div class="chart-container">
+                        <img src="可视化/各阶段事件占比.png" alt="各阶段事件占比" class="chart-image">
+                        <div class="chart-desc">
+                            本图表使用饼图展示五个历史阶段在总事件中的占比情况。每个扇区的大小表示该阶段事件数量占总事件数量的比例，可以直观地看出各个阶段的重要性对比。
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-title">事件类型Top5</div>
+                    <button class="toggle-btn">+</button>
+                </div>
+                <div class="card-content">
+                    <div class="chart-container">
+                        <img src="可视化/事件类型Top5.png" alt="事件类型Top5" class="chart-image">
+                        <div class="chart-desc">
+                            本图表展示了数量最多的前五种事件类型及其具体数量。通过条形图的形式直观比较各类事件的发生频率，帮助理解陈毅生平活动的重点领域。
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-title">各阶段事件热力图</div>
+                    <button class="toggle-btn">+</button>
+                </div>
+                <div class="card-content">
+                    <div class="chart-container">
+                        <img src="可视化/各阶段事件热力图.png" alt="各阶段事件热力图" class="chart-image">
+                        <div class="chart-desc">
+                            本热力图展示了不同阶段中各类事件的分布情况。颜色深浅表示事件数量的多少，可以直观地看出各个阶段的主要事件类型构成和变化趋势。
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-title">综合分析仪表板</div>
+                    <button class="toggle-btn">+</button>
+                </div>
+                <div class="card-content">
+                    <div class="chart-container">
+                        <img src="可视化/综合分析仪表板.png" alt="综合分析仪表板" class="chart-image">
+                        <div class="chart-desc">
+                            本仪表板整合了多个分析维度的结果，提供对陈毅生平事件的全面概览。包含时间趋势、地理分布、类型构成等综合信息，是数据集的整体分析视图。
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-title">事件类型分布（更新）</div>
+                    <button class="toggle-btn">+</button>
+                </div>
+                <div class="card-content">
+                    <div class="chart-container">
+                        <img src="可视化/事件类型分布_更新.png" alt="事件类型分布（更新）" class="chart-image">
+                        <div class="chart-desc">
+                            这是事件类型分布图表的更新版本，使用了更优化的视觉效果和分类方式。图表中包含了更详细的事件类型细分，以及各类事件在不同时期的分布特征。
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-card">
+                <div class="card-header">
+                    <div class="card-title">各阶段事件任务占比</div>
+                    <button class="toggle-btn">+</button>
+                </div>
+                <div class="card-content">
+                    <div class="chart-container">
+                        <img src="可视化/各阶段事件任务占比.png" alt="各阶段事件任务占比" class="chart-image">
+                        <div class="chart-desc">
+                            本图表分析了不同阶段中各类任务（军事、政治、外交等）的占比情况。通过堆叠柱状图的形式，展示各个阶段工作重点的变化和连续性。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为所有切换按钮添加点击事件
+            document.querySelectorAll('.toggle-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const card = this.closest('.data-card');
+                    const content = card.querySelector('.card-content');
+                    const isExpanded = content.classList.contains('expanded');
+                    
+                    // 切换内容区域
+                    content.classList.toggle('expanded');
+                    
+                    // 更新按钮文本
+                    this.textContent = isExpanded ? '+' : '−';
+                    
+                    // 如果有其他卡片展开，可以自动关闭（可选）
+                    if (!isExpanded) {
+                        document.querySelectorAll('.card-content.expanded').forEach(otherContent => {
+                            if (otherContent !== content) {
+                                otherContent.classList.remove('expanded');
+                                const otherBtn = otherContent.closest('.data-card').querySelector('.toggle-btn');
+                                otherBtn.textContent = '+';
+                            }
+                        });
+                    }
+                });
+            });
+            
+            // 点击卡片头部也可以展开/收起
+            document.querySelectorAll('.card-header').forEach(header => {
+                header.addEventListener('click', function(event) {
+                    if (!event.target.classList.contains('toggle-btn')) {
+                        const btn = this.querySelector('.toggle-btn');
+                        btn.click();
+                    }
+                });
+            });
+            
+            // 图片加载失败处理
+            document.querySelectorAll('.chart-image').forEach(img => {
+                img.addEventListener('error', function() {
+                    this.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="#f0f0f0"/><text x="200" y="150" text-anchor="middle" fill="#999" font-family="Arial" font-size="14">图片加载失败</text></svg>';
+                    this.alt = '图片加载失败，请检查文件路径';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>陈毅历史行迹图（1901-1972）</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --phase1:#4A90D9; --phase2:#E84C3D; --phase3:#F39C12; --phase4:#8E44AD; --phase5:#27AE60;
+  --sidebar:300px; --timeline:120px; --header:52px;
+  --bg:#f5f5f5; --card:#fff; --text:#2c3e50; --muted:#7f8c8d; --border:#e0e0e0;
+}
+html, body { height:100%; font-family:'PingFang SC','Microsoft YaHei',sans-serif; background:var(--bg); color:var(--text); }
+
+#header {
+  height:var(--header); background:linear-gradient(135deg,#1a237e 0%,#283593 100%);
+  color:#fff; display:flex; align-items:center; padding:0 16px; gap:16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.25); position:relative; z-index:500;
+}
+#header h1 { font-size:18px; font-weight:700; letter-spacing:1px; white-space:nowrap; }
+#header .subtitle { font-size:12px; opacity:.7; white-space:nowrap; }
+#phase-filters { display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+.phase-btn {
+  padding:4px 10px; border:1.5px solid rgba(255,255,255,.4); border-radius:20px;
+  background:transparent; color:#fff; font-size:12px; cursor:pointer;
+  transition:all .2s; white-space:nowrap;
+}
+.phase-btn:hover { background:rgba(255,255,255,.2); }
+.phase-btn.active { background:rgba(255,255,255,.95); color:#1a237e; font-weight:600; border-color:transparent; }
+.phase-btn[data-phase="1"].active { color:var(--phase1); }
+.phase-btn[data-phase="2"].active { color:var(--phase2); }
+.phase-btn[data-phase="3"].active { color:var(--phase3); }
+.phase-btn[data-phase="4"].active { color:var(--phase4); }
+.phase-btn[data-phase="5"].active { color:var(--phase5); }
+
+#main { display:flex; height:calc(100vh - var(--header) - var(--timeline)); }
+
+#sidebar {
+  width:var(--sidebar); background:var(--card); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; overflow:hidden; flex-shrink:0;
+}
+#sidebar-inner { flex:1; overflow-y:auto; padding:12px; }
+#sidebar-inner::-webkit-scrollbar { width:4px; }
+#sidebar-inner::-webkit-scrollbar-thumb { background:#ccc; border-radius:4px; }
+
+.sidebar-section { margin-bottom:14px; }
+.sidebar-title {
+  font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.8px;
+  color:var(--muted); margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--border);
+}
+
+.legend-item { display:flex; align-items:center; gap:8px; padding:3px 0; font-size:13px; }
+.legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+
+#event-detail {
+  background:linear-gradient(135deg,#f8f9fa,#fff); border-radius:8px;
+  padding:12px; border:1px solid var(--border); min-height:80px;
+}
+#event-detail .ev-date { font-size:11px; color:var(--muted); margin-bottom:4px; }
+#event-detail .ev-title { font-size:14px; font-weight:600; line-height:1.4; margin-bottom:6px; }
+#event-detail .ev-loc {
+  display:inline-flex; align-items:center; gap:3px; font-size:11px; color:#fff;
+  padding:2px 8px; border-radius:10px; margin-bottom:6px;
+}
+#event-detail .ev-desc { font-size:12px; color:var(--muted); line-height:1.6; }
+#event-detail.empty { color:var(--muted); font-size:13px; display:flex; align-items:center; justify-content:center; }
+
+#event-list { display:flex; flex-direction:column; gap:6px; }
+.ev-item {
+  padding:8px 10px; border-radius:6px; border-left:3px solid transparent;
+  background:#f8f9fa; cursor:pointer; transition:all .15s;
+}
+.ev-item:hover { background:#eef2ff; transform:translateX(2px); }
+.ev-item .ev-item-date { font-size:10px; color:var(--muted); margin-bottom:2px; }
+.ev-item .ev-item-title { font-size:12px; font-weight:500; line-height:1.4; }
+.ev-item .ev-item-loc { font-size:11px; color:var(--muted); margin-top:2px; }
+
+#map-container { flex:1; position:relative; }
+#map { width:100%; height:100%; background:#e8ecef; }
+
+#timeline {
+  height:var(--timeline); background:var(--card); border-top:1px solid var(--border);
+  padding:10px 20px 8px; display:flex; flex-direction:column; gap:6px;
+  box-shadow:0 -2px 8px rgba(0,0,0,.06);
+}
+#timeline-controls { display:flex; align-items:center; gap:10px; }
+#btn-play {
+  width:32px; height:32px; border-radius:50%; border:none;
+  background:#1a237e; color:#fff; font-size:14px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:background .2s;
+}
+#btn-play:hover { background:#283593; }
+#speed-label { font-size:12px; color:var(--muted); flex-shrink:0; }
+#speed-select {
+  padding:2px 6px; border:1px solid var(--border); border-radius:4px;
+  font-size:12px; background:var(--bg);
+}
+#date-display {
+  font-size:15px; font-weight:600; color:#1a237e; flex-shrink:0; min-width:140px; text-align:center;
+}
+#phase-name-display {
+  font-size:12px; padding:2px 10px; border-radius:10px; color:#fff; font-weight:500; flex-shrink:0;
+}
+#progress-info { margin-left:auto; font-size:11px; color:var(--muted); }
+
+#slider-area { position:relative; }
+#phase-bar { height:6px; border-radius:3px; overflow:hidden; display:flex; margin-bottom:2px; }
+.phase-seg { height:100%; transition:opacity .2s; }
+
+#year-slider {
+  width:100%; -webkit-appearance:none; appearance:none;
+  height:4px; background:transparent; outline:none; cursor:pointer;
+}
+#year-slider::-webkit-slider-runnable-track { height:4px; background:#e0e0e0; border-radius:2px; }
+#year-slider::-webkit-slider-thumb {
+  -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+  background:#1a237e; border:3px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.3);
+  cursor:pointer; margin-top:-7px; transition:transform .1s;
+}
+#year-slider::-webkit-slider-thumb:hover { transform:scale(1.15); }
+#year-slider::-moz-range-track { height:4px; background:#e0e0e0; border-radius:2px; }
+#year-slider::-moz-range-thumb {
+  width:18px; height:18px; border-radius:50%; background:#1a237e; border:3px solid #fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.3); cursor:pointer;
+}
+
+#year-ticks { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); padding:0 2px; }
+
+/* 地图标记 */
+.map-pin {
+  width:22px; height:22px; border-radius:50%;
+  border:2.5px solid rgba(255,255,255,.95);
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:10px; font-weight:700; cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.35); transition:transform .15s;
+}
+.map-pin:hover { transform:scale(1.25); }
+.map-pin-current {
+  width:28px; height:28px; border:3px solid #fff;
+  animation:pulse 1.5s infinite; z-index:1000;
+}
+@keyframes pulse {
+  0%   { box-shadow:0 0 0 0 rgba(255,255,255,.8),0 2px 8px rgba(0,0,0,.4); }
+  70%  { box-shadow:0 0 0 14px rgba(255,255,255,0),0 2px 8px rgba(0,0,0,.4); }
+  100% { box-shadow:0 0 0 0 rgba(255,255,255,0),0 2px 8px rgba(0,0,0,.4); }
+}
+.leaflet-div-icon { background:transparent !important; border:none !important; }
+
+/* 弹框 */
+.leaflet-popup-content { margin:0; font-family:inherit; max-width:280px; }
+.leaflet-popup-content-wrapper { border-radius:8px; overflow:hidden; padding:0; }
+.iw-header { padding:10px 12px; font-weight:700; font-size:14px; color:#fff; }
+.iw-body { padding:8px 12px 10px; max-height:220px; overflow-y:auto; }
+.iw-ev { border-bottom:1px solid #f0f0f0; padding:5px 0; }
+.iw-ev:last-child { border-bottom:none; }
+.iw-ev-date { font-size:11px; color:var(--muted); }
+.iw-ev-title { font-size:13px; font-weight:500; margin:2px 0; line-height:1.4; }
+.iw-ev-desc { font-size:11px; color:var(--muted); line-height:1.5; }
+
+#loading-mask {
+  position:fixed; inset:0; background:rgba(255,255,255,.95);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:9999; font-size:16px; gap:10px;
+}
+.spinner {
+  width:40px; height:40px; border:4px solid #e0e0e0; border-top-color:#1a237e;
+  border-radius:50%; animation:spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="loading-mask">
+  <div class="spinner"></div>
+  <span>正在加载行迹数据…</span>
+</div>
+
+<div id="header">
+  <div style="display: flex; align-items: center; gap: 20px;">
+    <a href="index.html" style="color: white; text-decoration: none; font-size: 20px; margin-right: 10px;">←</a>
+    <div>
+      <h1>陈毅历史行迹图</h1>
+      <div class="subtitle">1901 — 1972 · 五个历史阶段</div>
+    </div>
+  </div>
+  <div id="phase-filters">
+    <button class="phase-btn active" data-phase="0">全部阶段</button>
+    <button class="phase-btn" data-phase="1">① 早年求学</button>
+    <button class="phase-btn" data-phase="2">② 武装革命</button>
+    <button class="phase-btn" data-phase="3">③ 新四军抗战</button>
+    <button class="phase-btn" data-phase="4">④ 解放战争</button>
+    <button class="phase-btn" data-phase="5">⑤ 外交建设</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <div id="sidebar-inner">
+      <div class="sidebar-section">
+        <div class="sidebar-title">阶段图例</div>
+        <div id="legend"></div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">当前事件</div>
+        <div id="event-detail" class="empty">拖动时间轴查看事件</div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">同年事件</div>
+        <div id="event-list"></div>
+      </div>
+    </div>
+  </div>
+  <div id="map-container"><div id="map"></div></div>
+</div>
+
+<div id="timeline">
+  <div id="timeline-controls">
+    <button id="btn-play">▶</button>
+    <span id="speed-label">速度</span>
+    <select id="speed-select">
+      <option value="30">慢（月/步）</option>
+      <option value="90" selected>中（季/步）</option>
+      <option value="180">快（半年/步）</option>
+      <option value="365">极快（年/步）</option>
+    </select>
+    <div id="date-display">加载中…</div>
+    <div id="phase-name-display"></div>
+    <div id="progress-info"></div>
+  </div>
+  <div id="slider-area">
+    <div id="phase-bar"></div>
+    <input type="range" id="year-slider" min="0" max="1000" value="0">
+    <div id="year-ticks"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+// ════════════════════════════════════════════════════════════════════════
+const PHASE_COLORS = {1:'#4A90D9',2:'#E84C3D',3:'#F39C12',4:'#8E44AD',5:'#27AE60'};
+const PHASE_NAMES  = {1:'早年求学',2:'武装革命',3:'新四军抗战',4:'解放战争',5:'外交建设'};
+const PHASE_LABELS = {
+  1:'早年求学（1901-1923）',2:'武装革命（1923-1937）',3:'新四军抗战（1937-1945）',
+  4:'解放战争（1945-1949）',5:'外交建设（1949-1972）',
+};
+const DATE_NUM_MIN = 19010826;
+const DATE_NUM_MAX = 19720110;
+
+const State = {
+  geodata:null, currentDateNum:DATE_NUM_MIN, activePhase:0,
+  isPlaying:false, playTimer:null,
+  map:null, markers:{}, polyline:null, currentPosMarker:null,
+};
+
+// ────────── 日期工具 ──────────
+function dateNumToDisplay(dn) {
+  if (!dn) return '日期不详';
+  const y=Math.floor(dn/10000), m=Math.floor((dn%10000)/100), d=dn%100;
+  if (m===0) return `${y}年`;
+  if (d===0) return `${y}年${m}月`;
+  return `${y}年${m}月${d}日`;
+}
+function sliderToDateNum(v){ return Math.round(DATE_NUM_MIN + v/1000*(DATE_NUM_MAX-DATE_NUM_MIN)); }
+function dateNumToSlider(dn){ return Math.round((dn-DATE_NUM_MIN)/(DATE_NUM_MAX-DATE_NUM_MIN)*1000); }
+function addDays(dn, days) {
+  const y=Math.floor(dn/10000), m=Math.floor((dn%10000)/100), d=dn%100;
+  const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+days);
+  return dt.getFullYear()*10000+(dt.getMonth()+1)*100+dt.getDate();
+}
+function getPhase(dn){
+  if (dn<=19231101) return 1;
+  if (dn<=19370929) return 2;
+  if (dn<=19451025) return 3;
+  if (dn<=19490527) return 4;
+  return 5;
+}
+function dateDiff(a,b){
+  const toD=dn=>new Date(Math.floor(dn/10000), Math.floor((dn%10000)/100)-1, Math.max(dn%100,1));
+  return Math.abs(toD(b)-toD(a))/86400000;
+}
+
+// ────────── 数据加载 ──────────
+async function loadData(){
+  // 直接尝试加载geodata.json，不区分file://或http://
+  try {
+    // 首先尝试fetch（适用于http://协议）
+    const r = await fetch('geodata.json');
+    if (r.ok) {
+      return await r.json();
+    }
+  } catch (httpError) {
+    // fetch失败，尝试XMLHttpRequest（适用于file://协议）
+    console.log('fetch失败，尝试XMLHttpRequest:', httpError);
+  }
+  
+  // 尝试通过XMLHttpRequest加载本地文件
+  try {
+    const response = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', 'geodata.json', true);
+      xhr.onload = () => resolve(xhr);
+      xhr.onerror = () => reject(new Error('XMLHttpRequest加载失败'));
+      xhr.send();
+    });
+    
+    if (response.status === 200 || response.status === 0) {
+      // 状态码0或200表示本地文件加载成功
+      return JSON.parse(response.responseText);
+    } else {
+      throw new Error('HTTP ' + response.status);
+    }
+  } catch (error) {
+    console.error('所有加载方式均失败:', error);
+    // 显示简化提示，允许用户点击继续
+    document.getElementById('loading-mask').innerHTML =
+      `<div style="color:#e74c3c;text-align:center;max-width:480px;font-size:14px;padding:20px;">
+         <b style="font-size:18px;">⚠️ 无法直接加载数据</b><br><br>
+         <div style="background:#fff3cd;padding:15px;border-radius:8px;text-align:left;margin-bottom:15px;">
+           <b>解决方法：双击运行 "启动服务器.bat"</b><br><br>
+           文件夹中已包含启动脚本，运行后会自动打开浏览器访问：<br>
+           <code style="background:#f4f4f4;padding:4px 8px;border-radius:4px;display:block;margin-top:8px;">http://localhost:8080</code>
+         </div>
+         <div style="color:#666;font-size:13px;text-align:left;">
+           <b>技术说明：</b>浏览器安全限制不允许直接读取本地JSON文件，<br>
+           需要通过本地HTTP服务器访问。
+         </div>
+       </div>`;
+    return null;
+  }
+}
+
+// ────────── UI 装饰 ──────────
+function renderLegend(){
+  document.getElementById('legend').innerHTML = Object.entries(PHASE_LABELS).map(([id,name])=>`
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${PHASE_COLORS[id]}"></div>
+      <span>${name}</span>
+    </div>`).join('');
+}
+function renderPhaseBar(){
+  const total = dateDiff(DATE_NUM_MIN, DATE_NUM_MAX);
+  const segs = [[DATE_NUM_MIN,19231101,1],[19231102,19370929,2],[19370930,19451025,3],
+                [19451026,19490527,4],[19490528,DATE_NUM_MAX,5]];
+  document.getElementById('phase-bar').innerHTML = segs.map(([s,e,p])=>{
+    const pct = dateDiff(s,e)/total*100;
+    return `<div class="phase-seg" style="width:${pct.toFixed(2)}%;background:${PHASE_COLORS[p]}"></div>`;
+  }).join('');
+}
+function renderYearTicks(){
+  const ys=[1901,1910,1919,1923,1927,1934,1937,1941,1945,1949,1955,1960,1966,1972];
+  document.getElementById('year-ticks').innerHTML = ys.map(y=>`<span>${y}</span>`).join('');
+}
+
+// ────────── 地图 ──────────
+function initMap(){
+  State.map = L.map('map', {
+    center:[30, 106], zoom:4, minZoom:2, maxZoom:12,
+    worldCopyJump:true, zoomControl:true,
+  });
+
+  // CartoDB Positron — 浅色、全球、无需key
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution:'© OpenStreetMap contributors © CARTO',
+    subdomains:'abcd', maxZoom:19,
+  }).addTo(State.map);
+}
+
+function makeIcon(phase, count, isCurrent) {
+  const cls = 'map-pin' + (isCurrent ? ' map-pin-current' : '');
+  const label = count > 1 ? count : '';
+  return L.divIcon({
+    html: `<div class="${cls}" style="background:${PHASE_COLORS[phase]}">${label}</div>`,
+    iconSize: [isCurrent?28:22, isCurrent?28:22],
+    iconAnchor: [isCurrent?14:11, isCurrent?14:11],
+    className: '',
+  });
+}
+
+function popupHtml(loc, events){
+  const phase = events[events.length-1].phase;
+  const color = PHASE_COLORS[phase];
+  const list = events.slice(-12).reverse().map(e=>`
+    <div class="iw-ev">
+      <div class="iw-ev-date">${dateNumToDisplay(e.date_num)} · ${PHASE_NAMES[e.phase]}</div>
+      <div class="iw-ev-title">${e.title}</div>
+      ${e.description && e.description!==e.title
+        ? `<div class="iw-ev-desc">${e.description.slice(0,120)}${e.description.length>120?'…':''}</div>` : ''}
+    </div>`).join('');
+  return `<div class="iw-header" style="background:${color}">${loc}（${events.length}次）</div>
+          <div class="iw-body">${list}</div>`;
+}
+
+function updateMarkers(events){
+  const active = new Set();
+  const byLoc = {};
+  events.forEach(e=>{
+    if (!e.has_coords) return;
+    const key = `${e.lng.toFixed(4)},${e.lat.toFixed(4)}`;
+    if (!byLoc[key]) byLoc[key] = { events:[], lng:e.lng, lat:e.lat, loc:e.location };
+    byLoc[key].events.push(e);
+    active.add(key);
+  });
+
+  const lastEv = events.filter(e=>e.has_coords).slice(-1)[0];
+  const currentKey = lastEv ? `${lastEv.lng.toFixed(4)},${lastEv.lat.toFixed(4)}` : null;
+
+  Object.entries(byLoc).forEach(([key,info])=>{
+    const phase = info.events[info.events.length-1].phase;
+    const isCurrent = key === currentKey;
+    const icon = makeIcon(phase, info.events.length, isCurrent);
+    if (State.markers[key]) {
+      State.markers[key].setIcon(icon);
+      State.markers[key].setPopupContent(popupHtml(info.loc, info.events));
+    } else {
+      const m = L.marker([info.lat, info.lng], { icon, zIndexOffset: isCurrent?1000:0 });
+      m.bindPopup(popupHtml(info.loc, info.events), { maxWidth:300 });
+      m.addTo(State.map);
+      State.markers[key] = m;
+    }
+    State.markers[key].setZIndexOffset(isCurrent?1000:0);
+  });
+
+  Object.keys(State.markers).forEach(key=>{
+    if (!active.has(key)) {
+      State.map.removeLayer(State.markers[key]);
+      delete State.markers[key];
+    }
+  });
+}
+
+function updatePolyline(events){
+  if (State.polyline) { State.map.removeLayer(State.polyline); State.polyline = null; }
+  const pts = [];
+  let prevKey = null;
+  events.filter(e=>e.has_coords).forEach(e=>{
+    const key = `${e.lng.toFixed(4)},${e.lat.toFixed(4)}`;
+    if (key !== prevKey) {
+      pts.push([e.lat, e.lng]);
+      prevKey = key;
+    }
+  });
+  if (pts.length < 2) return;
+  State.polyline = L.polyline(pts, {
+    color:'#B8860B', weight:2.5, opacity:0.75,
+    dashArray:'8,6', lineJoin:'round',
+  }).addTo(State.map);
+}
+
+// ────────── 侧边栏 ──────────
+function updateSidebar(events, dateNum){
+  const latest = events.slice(-1)[0];
+  const el = document.getElementById('event-detail');
+  if (latest) {
+    el.className = '';
+    el.innerHTML = `
+      <div class="ev-date">${dateNumToDisplay(latest.date_num)}</div>
+      <div class="ev-title">${latest.title}</div>
+      <div class="ev-loc" style="background:${PHASE_COLORS[latest.phase]}">📍 ${latest.location}</div>
+      <div class="ev-desc">${latest.description.slice(0,140)}${latest.description.length>140?'…':''}</div>`;
+  } else {
+    el.className = 'empty';
+    el.textContent = '拖动时间轴查看事件';
+  }
+
+  const year = Math.floor(dateNum/10000);
+  const yearly = State.geodata.events
+    .filter(e=>e.date_num>0 && Math.floor(e.date_num/10000)===year)
+    .slice(0, 30);
+  const listEl = document.getElementById('event-list');
+  if (!yearly.length) {
+    listEl.innerHTML = `<div style="color:var(--muted);font-size:12px">${year}年无记录</div>`;
+    return;
+  }
+  listEl.innerHTML = yearly.map(e=>`
+    <div class="ev-item" style="border-left-color:${PHASE_COLORS[e.phase]}"
+         onclick="focusLoc(${e.lng||'null'}, ${e.lat||'null'})">
+      <div class="ev-item-date">${dateNumToDisplay(e.date_num)}</div>
+      <div class="ev-item-title">${e.title}</div>
+      <div class="ev-item-loc">📍 ${e.location}</div>
+    </div>`).join('');
+}
+
+window.focusLoc = function(lng, lat) {
+  if (lng==null || lat==null) return;
+  State.map.flyTo([lat,lng], 7, { duration:0.8 });
+};
+
+// ────────── seek 核心 ──────────
+function seek(dateNum){
+  dateNum = Math.max(DATE_NUM_MIN, Math.min(DATE_NUM_MAX, dateNum));
+  State.currentDateNum = dateNum;
+
+  document.getElementById('year-slider').value = dateNumToSlider(dateNum);
+  document.getElementById('date-display').textContent = dateNumToDisplay(dateNum);
+
+  const ph = getPhase(dateNum);
+  const phEl = document.getElementById('phase-name-display');
+  phEl.style.background = PHASE_COLORS[ph];
+  phEl.textContent = PHASE_NAMES[ph];
+
+  const allEv = State.geodata.events;
+  const pf = State.activePhase;
+  const visible = allEv.filter(e=>{
+    if (e.date_num===0) return false;
+    if (e.date_num>dateNum) return false;
+    if (pf!==0 && e.phase!==pf) return false;
+    return true;
+  });
+
+  const total = allEv.filter(e=>e.date_num>0 && (pf===0||e.phase===pf)).length;
+  document.getElementById('progress-info').textContent = `已呈现 ${visible.length} / ${total} 条`;
+
+  updateMarkers(visible);
+  updatePolyline(visible);
+  updateSidebar(visible, dateNum);
+}
+
+// ────────── 播放 ──────────
+function togglePlay(){ State.isPlaying ? pausePlay() : startPlay(); }
+function startPlay(){
+  if (State.currentDateNum >= DATE_NUM_MAX) seek(DATE_NUM_MIN);
+  State.isPlaying = true;
+  document.getElementById('btn-play').textContent = '⏸';
+  const step = parseInt(document.getElementById('speed-select').value);
+  State.playTimer = setInterval(()=>{
+    const next = addDays(State.currentDateNum, step);
+    if (next >= DATE_NUM_MAX) { seek(DATE_NUM_MAX); pausePlay(); }
+    else seek(next);
+  }, 200);
+}
+function pausePlay(){
+  State.isPlaying = false;
+  document.getElementById('btn-play').textContent = '▶';
+  clearInterval(State.playTimer);
+}
+
+// ────────── 阶段筛选 ──────────
+function setPhaseFilter(phase){
+  State.activePhase = phase;
+  document.querySelectorAll('.phase-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.dataset.phase)===phase);
+  });
+  // 清空所有标记，强制重建
+  Object.values(State.markers).forEach(m=>State.map.removeLayer(m));
+  State.markers = {};
+  if (phase!==0) {
+    const first = State.geodata.events.find(e=>e.phase===phase && e.date_num>0);
+    if (first) { seek(first.date_num); return; }
+  }
+  seek(State.currentDateNum);
+}
+
+// ────────── 重试加载 ──────────
+window.retryLoad = function() {
+  document.getElementById('loading-mask').innerHTML = 
+    `<div class="spinner"></div>
+     <span>正在重新加载行迹数据…</span>`;
+  setTimeout(() => main(), 500);
+};
+
+// ────────── 主入口 ──────────
+async function main(){
+  const data = await loadData();
+  if (!data) return;
+  State.geodata = data;
+
+  renderLegend();
+  renderPhaseBar();
+  renderYearTicks();
+  initMap();
+
+  document.getElementById('loading-mask').style.display = 'none';
+
+  // 修正容器尺寸（loading 遮罩解除后）
+  setTimeout(()=>State.map.invalidateSize(), 50);
+
+  const slider = document.getElementById('year-slider');
+  slider.addEventListener('input', ()=>{
+    pausePlay();
+    seek(sliderToDateNum(parseInt(slider.value)));
+  });
+  document.getElementById('btn-play').addEventListener('click', togglePlay);
+  document.querySelectorAll('.phase-btn').forEach(b=>{
+    b.addEventListener('click', ()=>setPhaseFilter(parseInt(b.dataset.phase)));
+  });
+  document.getElementById('speed-select').addEventListener('change', ()=>{
+    if (State.isPlaying) { pausePlay(); startPlay(); }
+  });
+
+  seek(DATE_NUM_MIN);
+}
+
+main();
+</script>
+</body>
+</html>
