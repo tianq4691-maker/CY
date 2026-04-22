@@ -279,7 +279,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <a href="http://localhost:8080/" class="back-btn">←</a>
+            <a href="index.html" class="back-btn">←</a>
             <div>
                 <h1>陈毅知识图谱</h1>
                 <p class="subtitle">基于Neo4j知识图谱的三维度可视化：完整知识图谱、人物事件关系、地点事件关联</p>
@@ -567,7 +567,7 @@
                 console.error('数据加载失败:', error);
                 
                 // 显示错误信息
-                const errorMsg = `数据加载失败: ${error.message}\n\n请确保:\n1. HTTP服务器正在运行\n2. CSV文件在正确目录下\n3. 通过http://localhost:8080/访问页面`;
+                const errorMsg = `数据加载失败: ${error.message}\n\n请确保:\n1. HTTP服务器正在运行\n2. CSV文件在正确目录下\n3. 通过 http://localhost:9999/ 或 GitHub Pages 访问页面`;
                 
                 document.getElementById('complete-loading').innerHTML = 
                     `<div style="color: #e74c3c;">${errorMsg}</div>`;
